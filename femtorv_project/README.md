@@ -133,23 +133,60 @@ When contributing waveforms or images:
 3. Update README.md to reference new images
 4. Include signal descriptions and timing analysis
 
-## License
-[Insert License Information]
-
 ## Waveform Analysis and Signal Behavior
 
 ### Key Signals and Their Behavior
 ```
 Time ------>
 clk          ‾\_/‾\_/‾\_/‾\_/‾\_/‾\_/‾  Clock signal (System clock)
+            The main system clock that drives all sequential logic in the processor.
+            Rising edge triggers state updates throughout the design.
+
 mem_addr     00→04→08→0C→10→14          Program Counter incrementing by 4
+            Memory address bus showing instruction fetch addresses.
+            Increments by 4 bytes each cycle (32-bit instruction alignment).
+            Values shown in hexadecimal.
+
 mem_rdata    NOP→LUI→ADD→SUB→...        Instruction being fetched
+            Data read from memory, containing the current instruction.
+            Shows the instruction type being executed each cycle:
+            - NOP: No Operation
+            - LUI: Load Upper Immediate
+            - ADD: Addition
+            - SUB: Subtraction
+
 mem_rstrb    ___/‾\___/‾\___/‾\___      Read strobe for instruction fetch
+            Active-high signal indicating valid instruction fetch.
+            Pulses high when the processor is requesting an instruction.
+            Width indicates fetch duration.
+
 mem_wdata    00→00→00→03030303→00       Data being written to memory
+            Data to be written to memory during store operations.
+            Shows actual values being written (in hexadecimal).
+            '03030303' example shows a word-aligned store.
+
 mem_wmask    0→0→0→F→0                  Write mask (F = all bytes active)
+            Controls which bytes are written during store operations:
+            - 0: No bytes written
+            - F: All bytes written (full 32-bit word)
+            - Other values enable specific bytes (1,2,4,8 for individual bytes)
+
 reset        0→1                         Initial reset, then stays high
+            System reset signal:
+            - 0: Processor in reset state
+            - 1: Normal operation
+            Used to initialize processor state on startup.
+
 trap         0                           No traps occurred
+            Indicates exceptional conditions:
+            - 0: Normal operation
+            - 1: Exception or interrupt occurred
+            Used for error handling and debugging.
+
 trap_cause   0                           No trap cause (normal operation)
+            Encodes the reason for a trap when trap signal is high.
+            0 indicates normal operation (no trap active).
+            Other values indicate specific exception types.
 ```
 
 ### Instruction Execution Sequence
