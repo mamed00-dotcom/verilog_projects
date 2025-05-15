@@ -1,8 +1,8 @@
 # FemtoRV32: A Compact RISC-V Processor Implementation
 
 ## Overview
-FemtoRV32 is a compact implementation of the RISC-V RV32I base integer instruction set. It features a streamlined 5-stage pipeline design with Physical Memory Protection (PMP) support, making it suitable for embedded systems and educational purposes.
-
+- FemtoRV32 is a compact implementation of the RISC-V RV32I base integer instruction set. It features a streamlined 5-stage pipeline design with Physical Memory Protection (PMP) support, making it suitable for embedded systems and educational purposes.
+- Inspired by the tuto: https://www.youtube.com/watch?v=8boamDdvD8s from the playlist of RISC-V Assembly Code
 ## Features
 - Full RV32I base instruction set support
 - 5-stage pipeline architecture
@@ -86,18 +86,104 @@ The processor supports all RV32I instructions:
 ```mermaid
 stateDiagram-v2
     [*] --> FETCH_INSTR: reset
+    
     FETCH_INSTR --> WAIT_INSTR: !mem_rbusy
+    note right of FETCH_INSTR
+        mem_addr ← PC
+        mem_rstrb ← 1
+    end note
+
     WAIT_INSTR --> DECODE: !mem_rbusy
+    note right of WAIT_INSTR
+        instr ← mem_rdata
+    end note
+
     DECODE --> EXECUTE
+    note right of DECODE
+        rs1 ← registerFile[instr[19:15]]
+        rs2 ← registerFile[instr[24:20]]
+    end note
+
     EXECUTE --> WAIT_ALU: isALU & funct3IsShift
     EXECUTE --> LOAD: isLoad
     EXECUTE --> STORE: isStore
-    EXECUTE --> FETCH_INSTR: Others
+    EXECUTE --> FETCH_INSTR: others
+    note right of EXECUTE
+        PC ← nextPC (for branch/jump)
+        ALU operations
+        Branch conditions
+    end note
+
     WAIT_ALU --> FETCH_INSTR: !aluBusy
+    note right of WAIT_ALU
+        Shift operations
+        PC ← nextPC
+    end note
+
     LOAD --> WAIT_LOAD: !mem_rbusy
+    note right of LOAD
+        mem_addr ← aluPlus
+        mem_rstrb ← 1
+    end note
+
     WAIT_LOAD --> FETCH_INSTR: !mem_rbusy
+    note right of WAIT_LOAD
+        Load data handling
+        PC ← nextPC
+    end note
+
     STORE --> FETCH_INSTR: !mem_wbusy
+    note right of STORE
+        mem_addr ← aluPlus
+        mem_wmask ← based on funct3
+        PC ← nextPC
+    end note
 ```
+
+The FSM implements an 8-state RISC-V processor pipeline with the following states:
+
+1. **FETCH_INSTR (0)**: Initiates instruction fetch from memory using current PC
+   - Sets mem_addr to PC
+   - Activates mem_rstrb for memory read
+
+2. **WAIT_INSTR (1)**: Waits for instruction memory read to complete
+   - Captures instruction from mem_rdata when ready
+
+3. **DECODE (2)**: Reads register file and prepares operands
+   - Reads rs1 and rs2 from registerFile
+   - Decodes instruction fields
+
+4. **EXECUTE (3)**: Main execution state
+   - Performs ALU operations
+   - Handles branches and jumps
+   - Updates PC for control flow instructions
+
+5. **WAIT_ALU (4)**: Handles multi-cycle shift operations
+   - Waits for shift operations to complete
+   - Updates PC after completion
+
+6. **LOAD (5)**: Initiates memory read for load instructions
+   - Sets mem_addr to calculated address
+   - Activates mem_rstrb for data read
+
+7. **WAIT_LOAD (6)**: Waits for load data
+   - Waits for memory read to complete
+   - Updates PC after data is loaded
+
+8. **STORE (7)**: Handles memory write operations
+   - Sets mem_addr and mem_wmask
+   - Writes data to memory
+   - Updates PC after store completes
+
+Key signals:
+- mem_addr: Memory address for instruction/data access
+- mem_rstrb: Read strobe for memory operations
+- mem_wmask: Write mask for store operations
+- PC: Program Counter
+- aluBusy: Indicates ongoing shift operation
+- mem_rbusy/mem_wbusy: Memory operation status
+
+The FSM includes wait states to handle memory latency and multi-cycle ALU operations, with busy signals controlling state transitions.
 
 ## Memory Interface
 - 32-bit address bus
@@ -121,13 +207,7 @@ The project includes a Yosys synthesis script (synth.ys) that:
 5. Creates visualization
 
 ## Contributing
-Feel free to contribute to this project by:
-- Adding new features
-- Improving documentation
-- Fixing bugs
-- Enhancing test coverage
-
-When contributing waveforms or images:
+- If anyone wants to add a new waveform or an image please follow those steps :
 1. Place images in the `images/` directory
 2. Use descriptive filenames
 3. Update README.md to reference new images
@@ -218,14 +298,93 @@ The waveform demonstrates the processor executing the test program:
 ### Signal Relationships
 ```mermaid
 graph TD
-    CLK[Clock] -->|Triggers| FETCH[Instruction Fetch]
-    FETCH -->|Sets| ADDR[Memory Address]
-    ADDR -->|Triggers| RSTRB[Read Strobe]
-    RSTRB -->|Returns| RDATA[Read Data]
-    RDATA -->|Feeds| EXEC[Execution]
-    EXEC -->|May Trigger| WMASK[Write Mask]
-    WMASK -->|Controls| WDATA[Write Data]
+    subgraph Control
+        CLK[Clock] -->|Triggers| STATE[State Machine]
+        STATE -->|Controls| MEM_CTRL[Memory Control]
+        STATE -->|Controls| ALU_CTRL[ALU Control]
+    end
+
+    subgraph Memory_Interface
+        MEM_CTRL -->|Sets| MEM_ADDR[mem_addr]
+        MEM_CTRL -->|Sets| MEM_RSTRB[mem_rstrb]
+        MEM_CTRL -->|Sets| MEM_WMASK[mem_wmask]
+        MEM_ADDR -->|Address| MEM[Memory]
+        MEM -->|Returns| MEM_RDATA[mem_rdata]
+        MEM_BUSY[mem_rbusy/mem_wbusy] -->|Stalls| STATE
+    end
+
+    subgraph Instruction_Processing
+        MEM_RDATA -->|Feeds| DECODE[Instruction Decode]
+        DECODE -->|rs1,rs2| REG_FILE[Register File]
+        DECODE -->|Controls| ALU_CTRL
+        ALU_CTRL -->|Controls| ALU[ALU]
+        ALU -->|aluBusy| STATE
+        ALU -->|Result| REG_FILE
+    end
+
+    subgraph Program_Flow
+        PC[Program Counter] -->|Sets| MEM_ADDR
+        ALU -->|nextPC| PC
+        STATE -->|Updates| PC
+    end
 ```
+
+### Key Signal Descriptions
+
+1. **Clock and Control**
+   - `clk`: System clock driving all sequential logic
+   - `state`: Current FSM state (3-bit)
+   - `reset`: System reset signal
+
+2. **Memory Interface**
+   - `mem_addr[31:0]`: Memory address for instructions/data
+   - `mem_rdata[31:0]`: Data read from memory
+   - `mem_wdata[31:0]`: Data to write to memory
+   - `mem_wmask[3:0]`: Byte-level write mask
+   - `mem_rstrb`: Read strobe signal
+   - `mem_rbusy/mem_wbusy`: Memory operation status
+
+3. **Instruction Processing**
+   - `instr[31:0]`: Current instruction
+   - `rs1[31:0]`: First source register value
+   - `rs2[31:0]`: Second source register value
+   - `rdId[4:0]`: Destination register address
+   - `funct3Is[7:0]`: Decoded function field (one-hot)
+
+4. **ALU Signals**
+   - `aluIn1[31:0]`: First ALU input (rs1)
+   - `aluIn2[31:0]`: Second ALU input (rs2 or immediate)
+   - `aluOut[31:0]`: ALU result
+   - `aluBusy`: Indicates ongoing shift operation
+   - `aluPlus[31:0]`: Addition result
+
+5. **Program Flow**
+   - `PC[31:0]`: Program Counter
+   - `nextPC[31:0]`: Next instruction address
+   - `takeBranch`: Branch condition result
+
+### Signal Timing
+```
+Clock     ↑   ↑   ↑   ↑   ↑   ↑   ↑   ↑   ↑
+          │   │   │   │   │   │   │   │   │
+State     F→W→D→E→W   F→W→D→E   F→W→D→E
+          │   │   │   │   │   │   │   │   │
+mem_rstrb ┌─┐ │   │   │   ┌─┐ │   │   ┌─┐
+          │ │ │   │   │   │ │ │   │   │ │
+mem_addr  PC  │   │   │   PC  │   │   PC
+          │   │   │   │   │   │   │   │   │
+mem_rdata ────┤Ins├───│   ────┤Ins├───────
+          │   │   │   │   │   │   │   │   │
+PC        ────────────┼───────────┼───────
+                      │           │
+Legend:   F=FETCH     W=WAIT      D=DECODE
+          E=EXECUTE   Ins=Instruction
+```
+
+This timing diagram shows how key signals interact during instruction execution, with:
+- State transitions on clock edges
+- Memory access timing
+- Instruction flow through pipeline stages
 
 ### Memory Access Patterns
 1. **Instruction Fetch**:
