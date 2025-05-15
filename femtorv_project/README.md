@@ -408,16 +408,31 @@ This timing diagram shows how key signals interact during instruction execution,
 - One instruction typically takes multiple clock cycles 
 
 ### Waveform Visualization
-![FemtoRV32 Waveform](images/waveform.png)
 
-The waveform above shows the processor executing the test program from memory.hex. Key signals are shown including clock, memory interface, and control signals. The simulation was captured using GTKWave after running `make waves`.
+<div style="display: flex; justify-content: space-between;">
+    <div style="flex: 1; margin-right: 10px;">
+        <p><strong>Basic Waveform Overview:</strong></p>
+        <img src="images/waveform.png" alt="Basic FemtoRV32 Waveform" style="width: 100%;">
+    </div>
+    <div style="flex: 1; margin-left: 10px;">
+        <p><strong>Detailed Signal Analysis:</strong></p>
+        <img src="images/waveform-detailed.png" alt="Detailed Signal Analysis" style="width: 100%;">
+    </div>
+</div>
 
-To capture your own waveform visualization:
-1. Run the simulation: `make`
-2. Open waveform viewer: `make waves`
-3. In GTKWave:
-   - Select relevant signals from the left panel
-   - Adjust time scale for better visibility
-   - Use Zoom Fit (press 'F' key)
-   - File → Write Save File to save signal selection
-   - File → Export → Write PNG to save image 
+The waveforms above show:
+
+**Left Waveform (Overview):**
+- Basic processor operation
+- Clock and state transitions
+- Memory interface signals
+- Instruction flow
+
+**Right Waveform (Detailed):**
+- Detailed signal transitions
+- Memory address changes (mem_addr)
+- Instruction data flow (mem_data)
+- Program counter progression (PC, nextPC)
+- PMP configuration signals
+
+This visualization demonstrates the processor's operation through multiple clock cycles, showing how instructions are fetched, decoded, and executed while maintaining proper memory protection through the PMP configuration. 
