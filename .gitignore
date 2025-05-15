@@ -1,0 +1,30 @@
+# Verilator build artifacts
+obj_dir/
+*.o
+*.d
+*.mk
+*.log
+
+# Waveform files
+*.vcd
+*.fst
+*.lxt
+*.lxt2
+
+# Build artifacts
+.stamp.*
+*.out
+*.exe
+
+# Temporary files
+*~
+*.swp
+*.swo
+
+# IDE specific files
+.vscode/
+.idea/
+
+# System specific files
+.DS_Store
+Thumbs.db 

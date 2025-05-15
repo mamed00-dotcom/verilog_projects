@@ -1,0 +1,1 @@
+# Read the netlist;read_verilog netlist.v;hierarchy -check -top FemtoRV32;proc;show -format svg -prefix femtorv32_netlist -lib -viewer -colors 2

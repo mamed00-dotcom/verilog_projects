@@ -1,0 +1,22 @@
+# Simple RISC-V test program
+# Format: one instruction per line in hex
+# nop
+00000013
+# lui x1, 0x12345
+123450b7
+# addi x2, x0, 5
+00500113
+# addi x3, x0, 3
+00300193
+# add x4, x2, x3
+003100b3
+# sw x4, 0(x0)
+00402023
+# lw x5, 0(x0)
+00002283
+# beq x4, x5, 2
+00510463
+# nop
+00000013
+# nop
+00000013 

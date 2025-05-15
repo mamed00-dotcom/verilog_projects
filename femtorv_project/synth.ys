@@ -1,0 +1,27 @@
+# Read design
+read_verilog src/FemtoRV32.v
+
+# Generic synthesis
+hierarchy -check -top FemtoRV32
+proc
+flatten
+opt
+memory -nomap
+opt
+techmap
+opt
+
+# Map to gates
+abc -g gates
+clean
+
+# Write netlist
+write_verilog -noattr netlist.v
+write_json netlist.json
+
+# Print statistics
+stat
+
+# Generate visualization with both SVG and dot formats
+show -format svg -prefix femtorv32_netlist
+show -format dot -prefix femtorv32_netlist -viewer xdot
