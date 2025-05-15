@@ -124,7 +124,7 @@ The repository includes waveform visualizations for various modules, particularl
 
 ## Contributing
 
-Feel free to contribute by:
+Dear collaborators, feel free to contribute by:
 1. Creating new modules
 2. Improving existing implementations
 3. Enhancing documentation
